@@ -5,21 +5,24 @@
 <title>Wissen fangen</title>
 
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: #0e0e0e;
-    overflow: hidden;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  overflow: hidden;
+}
 
-  video {
+video, canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+}
+
+video {
   transform: scaleX(-1);
   opacity: 0.35;
   object-fit: cover;
@@ -27,22 +30,9 @@
 }
 
 canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
   z-index: 2;
   pointer-events: none;
 }
-
-  }
-
-  video {
-    transform: scaleX(-1);
-    opacity: 0.35;
-    object-fit: cover;
-  }
 </style>
 </head>
 
@@ -51,79 +41,73 @@ canvas {
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 let wissen = {
   x: canvas.width / 2,
   y: canvas.height / 2
 };
 
+async function setupCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  video.srcObject = stream;
+  return new Promise(resolve => {
+    video.onloadedmetadata = () => resolve(video);
+  });
+}
+
 function drawWissen() {
   ctx.font = "bold 56px Arial";
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "white";
   ctx.fillText("Wissen", wissen.x - 90, wissen.y);
 }
 
-function moveWissenAway(handX, handY) {
-  const dx = wissen.x - handX;
-  const dy = wissen.y - handY;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
+function moveAway(x, y) {
+  const dx = wissen.x - x;
+  const dy = wissen.y - y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
   if (dist < 150) {
     wissen.x += dx * 0.15;
     wissen.y += dy * 0.15;
   }
 }
 
-const hands = new Hands({
-  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+async function main() {
+  await setupCamera();
+  const model = await handpose.load();
 
-hands.setOptions({
-  maxNumHands: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
-});
+  async function loop() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawWissen();
 
-hands.onResults(results => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawWissen();
+    const predictions = await model.estimateHands(video);
+    if (predictions.length > 0) {
+      const finger = predictions[0].landmarks[8];
+      const x = finger[0] / video.videoWidth * canvas.width;
+      const y = finger[1] / video.videoHeight * canvas.height;
 
-  if (results.multiHandLandmarks) {
-    const finger = results.multiHandLandmarks[0][8];
-    const handX = finger.x * canvas.width;
-    const handY = finger.y * canvas.height;
+      moveAway(x, y);
 
-    moveWissenAway(handX, handY);
-
-    ctx.beginPath();
-    ctx.arc(handX, handY, 12, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff4444";
-    ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = "red";
+      ctx.fill();
+    }
+    requestAnimationFrame(loop);
   }
-});
+  loop();
+}
 
-const camera = new Camera(video, {
-  onFrame: async () => {
-    await hands.send({ image: video });
-  },
-  width: 1280,
-  height: 720
-});
-camera.start();
+main();
 </script>
 
 </body>
