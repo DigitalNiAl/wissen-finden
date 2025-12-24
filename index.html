@@ -45,67 +45,22 @@ canvas {
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
 
 <script>
-const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let wissen = {
-  x: canvas.width / 2,
-  y: canvas.height / 2
-};
+ctx.fillStyle = "white";
+ctx.font = "bold 80px Arial";
+ctx.fillText("WISSEN", 100, 200);
 
-async function setupCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  video.srcObject = stream;
-  return new Promise(resolve => {
-    video.onloadedmetadata = () => resolve(video);
-  });
-}
+ctx.fillStyle = "red";
+ctx.beginPath();
+ctx.arc(400, 400, 30, 0, Math.PI * 2);
+ctx.fill();
+</script>
 
-function drawWissen() {
-  ctx.font = "bold 56px Arial";
-  ctx.fillStyle = "white";
-  ctx.fillText("Wissen", wissen.x - 90, wissen.y);
-}
-
-function moveAway(x, y) {
-  const dx = wissen.x - x;
-  const dy = wissen.y - y;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  if (dist < 150) {
-    wissen.x += dx * 0.15;
-    wissen.y += dy * 0.15;
-  }
-}
-
-async function main() {
-  await setupCamera();
-  const model = await handpose.load();
-
-  async function loop() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawWissen();
-
-    const predictions = await model.estimateHands(video);
-    if (predictions.length > 0) {
-      const finger = predictions[0].landmarks[8];
-      const x = finger[0] / video.videoWidth * canvas.width;
-      const y = finger[1] / video.videoHeight * canvas.height;
-
-      moveAway(x, y);
-
-      ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
-      ctx.fillStyle = "red";
-      ctx.fill();
-    }
-    requestAnimationFrame(loop);
-  }
-  loop();
-}
 
 main();
 </script>
