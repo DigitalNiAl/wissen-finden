@@ -4,10 +4,31 @@
 <meta charset="UTF-8">
 <title>Wissen fangen</title>
 <style>
-html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: black; overflow: hidden; }
-video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
-video { transform: scaleX(-1); opacity: 0.35; object-fit: cover; z-index: 1; }
-canvas { z-index: 2; pointer-events: none; }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+}
+video, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+video {
+    transform: scaleX(-1);
+    opacity: 0.35;
+    object-fit: cover;
+    z-index: 1;
+}
+canvas {
+    z-index: 2;
+    pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -46,11 +67,25 @@ async function main() {
         const predictions = await model.estimateHands(video);
         if (predictions.length > 0) {
             const hand = predictions[0];
-            const [x, y] = hand.landmarks[9]; // Mittelfinger-Mittelgelenk als Referenz
-            // Text auf Handposition zeichnen
+            // Wir nehmen den Mittelfinger-Mittelgelenk-Punkt (landmark 9)
+            const [x, y] = hand.landmarks[9];
+
+            // Webcam-Koordinaten auf Canvas skalieren
+            const scaleX = canvas.width / video.videoWidth;
+            const scaleY = canvas.height / video.videoHeight;
+            const drawX = x * scaleX;
+            const drawY = y * scaleY;
+
+            // Text "WISSEN" auf Handposition
             ctx.fillStyle = "white";
             ctx.font = "bold 80px Arial";
-            ctx.fillText("WISSEN", x * (canvas.width / video.videoWidth), y * (canvas.height / video.videoHeight));
+            ctx.fillText("WISSEN", drawX - 100, drawY - 40); // Offset für bessere Zentrierung
+
+            // Optional: kleiner roter Kreis auf Handpunkt
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 15, 0, Math.PI * 2);
+            ctx.fill();
         }
 
         requestAnimationFrame(render);
