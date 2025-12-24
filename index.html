@@ -1,69 +1,27 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<title>Wissen fangen</title>
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: black;
-    overflow: hidden;
-}
-video, canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-video {
-    transform: scaleX(-1);
-    opacity: 0.35; /* Webcam leicht durchsichtig */
-    z-index: 1;
-}
-canvas {
-    z-index: 2;
-    pointer-events: none;
-}
-</style>
-</head>
-<body>
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas"></canvas>
-
-<!-- TensorFlow und Handpose -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
-
 <script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Webcam starten
-async function setupCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    return new Promise(resolve => {
-        video.onloadedmetadata = () => resolve(video);
-    });
-}
-
-// Hauptfunktion
 async function main() {
     await setupCamera();
     video.play();
 
-    const model = await handpose.load();
-    console.log("Handpose Modell geladen");
+    // Warten bis Video wirklich Daten hat
+    await new Promise(resolve => {
+        const check = () => {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                resolve();
+            } else {
+                requestAnimationFrame(check);
+            }
+        };
+        check();
+    });
 
-    // Startposition des Wortes
+    // Canvas jetzt korrekt setzen
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const model = await handpose.load();
+    console.log("Handpose stabil geladen");
+
     let wordX = canvas.width / 2;
     let wordY = canvas.height / 2;
 
@@ -72,19 +30,15 @@ async function main() {
 
         const predictions = await model.estimateHands(video);
         if (predictions.length > 0) {
-            const hand = predictions[0];
-            const [x, y] = hand.landmarks[9]; // Mittelfinger-Mittelgelenk
+            const [x, y] = predictions[0].landmarks[9];
 
-            // Skalierung Video → Canvas
             const scaleX = canvas.width / video.videoWidth;
             const scaleY = canvas.height / video.videoHeight;
 
-            // Wort auf Hand setzen
             wordX = x * scaleX;
             wordY = y * scaleY;
         }
 
-        // Wort zeichnen
         ctx.fillStyle = "white";
         ctx.font = "bold 80px Arial";
         ctx.fillText("WISSEN", wordX - 100, wordY - 40);
@@ -97,5 +51,3 @@ async function main() {
 
 main();
 </script>
-</body>
-</html>
