@@ -2,42 +2,49 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Wissen fangen</title>
+<title>Canvas Test</title>
 <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: black;
-    overflow: hidden;
-}
-video, canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-}
-video {
-    transform: scaleX(-1);
-    opacity: 0.35; /* Webcam leicht durchsichtig */
-    object-fit: cover;
-    z-index: 1;
-}
-canvas {
-    z-index: 2;
-    pointer-events: none;
-}
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: black; }
+video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; }
+canvas { pointer-events: none; }
 </style>
 </head>
 <body>
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
-
 <script>
 const video = document.getElementById('video');
-const ca
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+async function setupCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    return new Promise(resolve => {
+        video.onloadedmetadata = () => resolve(video);
+    });
+}
+
+async function main() {
+    await setupCamera();
+    video.play();
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Test: Wort "WISSEN" mittig zeichnen
+        ctx.fillStyle = "white";
+        ctx.font = "bold 80px Arial";
+        ctx.fillText("WISSEN", canvas.width/2 - 150, canvas.height/2);
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+}
+
+main();
+</script>
+</body>
+</html>
