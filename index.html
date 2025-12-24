@@ -2,16 +2,42 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Canvas Test</title>
+<title>Wissen fangen</title>
 <style>
-html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: black; }
-video, canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; }
-canvas { pointer-events: none; }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+}
+video, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+video {
+    transform: scaleX(-1);
+    opacity: 0.35; /* Webcam leicht durchsichtig */
+    z-index: 1;
+}
+canvas {
+    z-index: 2;
+    pointer-events: none;
+}
 </style>
 </head>
 <body>
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas"></canvas>
+
+<!-- TensorFlow und Handpose -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
 
 <script>
 const video = document.getElementById('video');
@@ -20,6 +46,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+// Webcam starten
 async function setupCamera() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
@@ -28,20 +55,44 @@ async function setupCamera() {
     });
 }
 
+// Hauptfunktion
 async function main() {
     await setupCamera();
     video.play();
 
-    function draw() {
+    const model = await handpose.load();
+    console.log("Handpose Modell geladen");
+
+    // Startposition des Wortes
+    let wordX = canvas.width / 2;
+    let wordY = canvas.height / 2;
+
+    async function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Test: Wort "WISSEN" mittig zeichnen
+
+        const predictions = await model.estimateHands(video);
+        if (predictions.length > 0) {
+            const hand = predictions[0];
+            const [x, y] = hand.landmarks[9]; // Mittelfinger-Mittelgelenk
+
+            // Skalierung Video → Canvas
+            const scaleX = canvas.width / video.videoWidth;
+            const scaleY = canvas.height / video.videoHeight;
+
+            // Wort auf Hand setzen
+            wordX = x * scaleX;
+            wordY = y * scaleY;
+        }
+
+        // Wort zeichnen
         ctx.fillStyle = "white";
         ctx.font = "bold 80px Arial";
-        ctx.fillText("WISSEN", canvas.width/2 - 150, canvas.height/2);
-        requestAnimationFrame(draw);
+        ctx.fillText("WISSEN", wordX - 100, wordY - 40);
+
+        requestAnimationFrame(render);
     }
 
-    draw();
+    render();
 }
 
 main();
