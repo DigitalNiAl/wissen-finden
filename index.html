@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Wissen fangen</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #0e0e0e;
+    font-family: Arial, sans-serif;
+  }
+
+  video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: scaleX(-1);
+    opacity: 0.4;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>
+</head>
+
+<body>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Position des Wissens
+let wissen = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 50
+};
+
+function drawWissen() {
+  ctx.font = "bold 48px Arial";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText("Wissen", wissen.x - 70, wissen.y);
+}
+
+function moveWissenAway(handX, handY) {
+  const dx = wissen.x - handX;
+  const dy = wissen.y - handY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < 120) {
+    wissen.x += dx * 0.1;
+    wissen.y += dy * 0.1;
+  }
+}
+
+// MediaPipe Hands
+const hands = new Hands({
+  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.7
+});
+
+hands.onResults(results => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawWissen();
+
+  if (results.multiHandLandmarks) {
+    const indexFinger = results.multiHandLandmarks[0][8];
+
+    const handX = indexFinger.x * canvas.width;
+    const handY = indexFinger.y * canvas.height;
+
+    moveWissenAway(handX, handY);
+
+    // Handpunkt visualisieren
+    ctx.beginPath();
+    ctx.arc(handX, handY, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#ff4444";
+    ctx.fill();
+  }
+});
+
+// Kamera starten
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({ image: video });
+  },
+  width: 640,
+  height: 480
+});
+camera.start();
+</script>
+
+</body>
+</html>
